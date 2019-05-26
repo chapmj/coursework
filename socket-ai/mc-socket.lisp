@@ -1,6 +1,6 @@
 ; MC-SOCKET.LISP --- https://github.com/chapmj
 (format *standard-output* "~%This is Marc Chapman's socket program~%")
-
+(load "queue.lisp")
 ;;;
 ;;; Globals
 ;;; 
@@ -55,12 +55,36 @@
   (let 
     ((result (read-line (ext:get-socket-stream socket))))
     (princ result *standard-output*)
-    (force-output *standard-output*)))
+    (force-output *standard-output*)
+
+    ;write event to queue
+    (put-agent-event result)))
 
 
-;Create a table to store event messages received.
+;Create a queue to store event messages received.
 ;TODO: figure out how to make access syncrhonized
-(defparameter *agent-event-table* (make-hash-table))
+
+(defparameter *agent-events* (make-amortized-queue))
+(defvar *agent-events-lock* (threads:make-thread-lock))
+(defparameter *testint* 2)
+
+(defun get-agent-event ()
+  (threads:with-thread-lock (*agent-events-lock*)
+    (multiple-value-bind (ae returnval) 
+      (amortized-dequeue *agent-events*) 
+      (setq *agent-events* ae)
+      returnval)))
+
+(defun set-test()
+  (multiple-value-bind (a b) (values 1 9) (setq *testint* b)))
+
+(defun put-agent-event (val) 
+  (threads:with-thread-lock(*agent-events-lock*)
+    (setf *agent-events* (amortized-enqueue *agent-events* val))))
+
+(defun list-agent-events()
+  (threads:with-thread-lock(*agent-events-lock*)
+    (amortized-queue-list *agent-events*)))
 
 ;Open a socket to listen and spawn threads when client connections are made.
 (defun server ()
@@ -71,9 +95,12 @@
 
 ;If an agent event is received, do this.  Agent events are prefixed as
 ;AGENT-EVENT.
-;((EVENT-TYPE AGENT-EVENT) (AGENT-ID 01) (EXPRESSION CRY) (EVENT-UUID asdf-asdf-asdf-asdf))
+;((EVENT-TYPE AGENT-EVENT) 
+; (AGENT-ID 01) 
+; (EXPRESSION CRY) 
+; (EVENT-UUID asdf-asdf-asdf-asdf))
 
-(defun handle-agent-event event)
+;(defun handle-agent-event event)
 ;when an agent-event is received randomly assign it to another agent to receive
 ;new message:
 
@@ -133,7 +160,7 @@
 
 
 ; A socket to listen for messages
-(defun make-worker-handler (socket, handlerFunc) ;this name sucks
+(defun make-worker-handler (socket handlerFunc) ;this name sucks
   (when *debug-enabled*
     (format *standard-output* "~%Create thread~%"))
   ;create a thread. make-thread only accepts higher order functions
