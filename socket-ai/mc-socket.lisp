@@ -12,13 +12,11 @@
 (use-package 'ext)
 
 ;;; Network configuration
-;Default IP address, port, and debug mode
-; Setter: client and server port
+;Set IP address, port, and debug mode
 (setq *listener-port* 9999)
 (defun define-port (port-number)
   (setq *listener-port* port-number))
 
-; Setter: server address
 (setq *server-address* "127.0.0.1")
 (defun define-address (address-string)
   (setq *server-address* address-string))
