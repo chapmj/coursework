@@ -53,7 +53,8 @@
 ;Receives data and does an optima match to determine what do with it
 (defun receive (msg)
   (match msg
-    ((list :make-worker socket) (make-worker #'handle-connection socket))))
+    ((list :make-connection-handle socket) (make-worker #'handle-connection socket))
+    ((list :agent-event script) ((do-stuff)))))
 
 (defun tell (msg)
   (receieve msg))
@@ -108,14 +109,14 @@
   (loop 
     :with server-socket := (make-server-socket *listener-port*)
     :for socket := (socket-accept server-socket)
-    :do ((tell '(:make-worker socket))))
+    :do ((tell '(:make-connection-handle socket))))
 
 ;If an agent event is received, do this.  Agent events are prefixed as
 ;AGENT-EVENT.
-;((EVENT-TYPE AGENT-EVENT) 
-; (AGENT-ID 01) 
-; (EXPRESSION CRY) 
-; (EVENT-UUID asdf-asdf-asdf-asdf))
+;  (:AGENT-EVENT 
+;  (:AGENT-ID 01 
+;  :EXPRESSION CRY 
+;  :EVENT-UUID asdf-asdf-asdf-asdf))
 
 ;(defun handle-agent-event event)
 ;when an agent-event is received randomly assign it to another agent to receive
